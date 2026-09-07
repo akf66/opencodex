@@ -183,11 +183,18 @@ follow every upscaled pixel edge.
 
 - `cerebras.svg`, `novita.svg`, `siliconflow.svg`, `deepinfra.svg` — single-ink.
 - `baseten.svg`, `hyperbolic.svg`, `sambanova.svg`, `umans.svg`, `venice.svg`,
-  `vultr.svg`, `bizrouter.svg`, `orcarouter.svg` — colour-layered.
+  `vultr.svg`, `bizrouter.svg` — colour-layered.
 - `nous.svg` — traced from `nousresearch.com/apple-touch-icon.png` (180x180). This
   is the Nous Research company mark, distinct from `hermes-agent.svg`, which is
   the Hermes product's own icon. Attributing one to the other would be wrong even
-  though the same organization ships both.
+though the same organization ships both.
+
+Published as a square raster mark and committed unmodified:
+
+- `orcarouter.png` — fetched 2026-09-07 from
+  `https://www.orcarouter.ai/orca-logo-classic.png`, OrcaRouter's official classic
+  logo (535x533 indexed PNG; SHA-256
+  `96ed7062ed766e27bb6002f2831d6b54ec87f2371d4c4ab3bab27823a0b0fb07`).
 
 Found on a docs subdomain after the vendor's marketing site offered only a
 wordmark:
