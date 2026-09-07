@@ -51,6 +51,13 @@ describe("OrcaRouter dual authentication", () => {
       liveModels: true,
       allowBaseUrlOverride: true,
     });
+    for (const entry of [key, oauth]) {
+      expect(entry.models).toContain("openai/gpt-5.5");
+      expect(entry.models).toContain("orcarouter/auto");
+      expect(entry.modelReasoningEfforts?.["openai/gpt-5.5"])
+        .toEqual(["low", "medium", "high", "xhigh"]);
+      expect(entry.modelReasoningEfforts?.["deepseek/deepseek-v4-pro"]).toBeArray();
+    }
     expect(KEY_LOGIN_PROVIDERS.orcarouter).toBeDefined();
     expect(OAUTH_PROVIDERS["orcarouter-oauth"]).toBeDefined();
     expect(deriveProviderPresets().find(row => row.id === "orcarouter")).toMatchObject({ auth: "key" });
@@ -64,7 +71,8 @@ describe("OrcaRouter dual authentication", () => {
   test("discovers the live chat catalog with bounded declarative filtering", () => {
     const entry = registryEntry("orcarouter");
     expect(providerModelDiscoverySpecError(entry.modelDiscovery!)).toBeNull();
-    expect(entry.models).toBeUndefined();
+    expect(entry.models).toContain("openai/gpt-5.5");
+    expect(entry.models).toContain("orcarouter/auto");
     const seed = providerConfigSeed(entry);
     const discovery = resolveProviderModelDiscovery("orcarouter", seed);
     expect(resolveProviderModelDiscoveryUrl(

@@ -1141,8 +1141,21 @@ const ORCAROUTER_MODEL_DISCOVERY: ProviderModelDiscoverySpec = {
     }],
   },
 };
+// Preserve the previously verified cold-start catalog. Live discovery remains authoritative
+// when it succeeds, but a temporary catalog outage must not erase the provider's known-good
+// selectors from the picker. `orcarouter/auto` is intentionally retained here even though the
+// public catalog did not enumerate it at the latest verification (2026-09-07).
+const ORCAROUTER_MODELS = [
+  "openai/gpt-5.5",
+  "anthropic/claude-opus-4.8",
+  "google/gemini-3.5-flash",
+  "deepseek/deepseek-v4-pro",
+  "orcarouter/auto",
+];
 const ORCAROUTER_TEXT_ONLY_MODELS = ["deepseek/deepseek-v4-pro"];
 const ORCAROUTER_MODEL_REASONING_EFFORTS = {
+  // Live /models currently exposes ids and modalities, not the accepted reasoning ladder.
+  "openai/gpt-5.5": ["low", "medium", "high", "xhigh"],
   "deepseek/deepseek-v4-pro": deepseekThinkingEffortsFor("deepseek/deepseek-v4-pro"),
 };
 const ORCAROUTER_MODEL_REASONING_EFFORT_MAP = {
@@ -1396,6 +1409,7 @@ export const PROVIDER_REGISTRY: readonly ProviderRegistryEntry[] = [
     featured: true,
     allowBaseUrlOverride: true,
     defaultModel: "openai/gpt-5.5",
+    models: ORCAROUTER_MODELS,
     liveModels: true,
     modelDiscovery: ORCAROUTER_MODEL_DISCOVERY,
     noVisionModels: ORCAROUTER_TEXT_ONLY_MODELS,
@@ -1885,6 +1899,7 @@ export const PROVIDER_REGISTRY: readonly ProviderRegistryEntry[] = [
     // The catalog is public, so a successful /models probe cannot validate a submitted key.
     apiKeyValidation: "unknown",
     defaultModel: "openai/gpt-5.5",
+    models: ORCAROUTER_MODELS,
     liveModels: true,
     modelDiscovery: ORCAROUTER_MODEL_DISCOVERY,
     // Catalog discovery owns WHICH models exist. These entries only retain verified
