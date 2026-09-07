@@ -103,17 +103,11 @@ function parseKeyPayload(value: unknown): OAuthCredentials {
   };
 }
 
-function durableKeyCredential(apiKey: string): OAuthCredentials {
+function assertDurableApiKey(apiKey: string): void {
   const key = apiKey.trim();
   if (!key.startsWith(ORCAROUTER_KEY_PREFIX) || key.length > 4096 || /[\r\n]/.test(key)) {
     throw new Error("OrcaRouter API key is invalid; reconnect with ocx login orcarouter-oauth");
   }
-  return {
-    access: key,
-    refresh: key,
-    expires: Number.MAX_SAFE_INTEGER,
-    source: "oauth",
-  };
 }
 
 export class OrcaRouterOAuthFlow extends OAuthCallbackFlow {
@@ -195,6 +189,10 @@ export async function loginOrcaRouter(
   return new OrcaRouterOAuthFlow(ctrl, options).login();
 }
 
-export async function refreshOrcaRouterKey(apiKey: string): Promise<OAuthCredentials> {
-  return durableKeyCredential(apiKey);
+export async function refreshOrcaRouterKey(apiKey: string): Promise<never> {
+  assertDurableApiKey(apiKey);
+  // This hook is reached only after upstream rejected the durable key. There is no refresh
+  // grant to replay, so classify the credential as terminal and let the shared generation-safe
+  // refresh path mark this exact account as needing a new browser login.
+  throw new Error("invalid_grant: OrcaRouter API keys cannot be refreshed; reconnect with ocx login orcarouter-oauth");
 }

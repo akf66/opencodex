@@ -1,7 +1,15 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { catalogHintsFromModelsApiItem } from "../../src/codex/catalog/provider-fetch";
-import { OAUTH_PROVIDERS, upsertOAuthProvider } from "../../src/oauth";
+import {
+  forceRefreshOAuthAccessSnapshot,
+  getValidAccessTokenSnapshot,
+  OAUTH_PROVIDERS,
+  upsertOAuthProvider,
+} from "../../src/oauth";
 import { KEY_LOGIN_PROVIDERS } from "../../src/oauth/key-providers";
 import {
   normalizeOrcaRouterBaseUrl,
@@ -10,6 +18,7 @@ import {
   orcaRouterInferenceBaseUrl,
   refreshOrcaRouterKey,
 } from "../../src/oauth/orcarouter";
+import { getAccountSet, saveCredential } from "../../src/oauth/store";
 import { deriveProviderPresets, providerConfigSeed } from "../../src/providers/derive";
 import {
   extractProviderModelItems,
@@ -20,6 +29,7 @@ import {
 import { PROVIDER_REGISTRY } from "../../src/providers/registry";
 import type { OcxConfig } from "../../src/types";
 import { formatProviderDisplayName, providerIconSrc } from "../../gui/src/provider-icons";
+import { removeTreeWithRetry } from "../helpers/remove-tree";
 
 const originalFetch = globalThis.fetch;
 
@@ -212,13 +222,35 @@ describe("OrcaRouter dual authentication", () => {
     });
   });
 
-  test("treats the exchanged key as durable instead of inventing a refresh grant", async () => {
+  test("treats an upstream-rejected durable key as terminal instead of inventing a refresh grant", async () => {
     await expect(refreshOrcaRouterKey("bad-key")).rejects.toThrow("reconnect");
-    await expect(refreshOrcaRouterKey("sk-orca-existing-key")).resolves.toEqual({
-      access: "sk-orca-existing-key",
-      refresh: "sk-orca-existing-key",
-      expires: Number.MAX_SAFE_INTEGER,
-      source: "oauth",
-    });
+    await expect(refreshOrcaRouterKey("sk-orca-existing-key"))
+      .rejects.toThrow("invalid_grant");
+  });
+
+  test("generation-safely marks a rejected durable key as requiring a new login", async () => {
+    const previousHome = process.env.OPENCODEX_HOME;
+    const testHome = mkdtempSync(join(tmpdir(), "ocx-orcarouter-401-"));
+    process.env.OPENCODEX_HOME = testHome;
+    try {
+      await saveCredential("orcarouter-oauth", {
+        access: "sk-orca-revoked-key",
+        refresh: "sk-orca-revoked-key",
+        expires: Number.MAX_SAFE_INTEGER,
+        accountId: "user-42",
+        source: "oauth",
+      });
+      const rejected = await getValidAccessTokenSnapshot("orcarouter-oauth");
+
+      await expect(forceRefreshOAuthAccessSnapshot(rejected)).rejects.toThrow("Not logged in");
+      const account = getAccountSet("orcarouter-oauth")?.accounts
+        .find(candidate => candidate.id === rejected.accountId);
+      expect(account?.needsReauth).toBe(true);
+      expect(account?.credential.access).toBe("sk-orca-revoked-key");
+    } finally {
+      if (previousHome === undefined) delete process.env.OPENCODEX_HOME;
+      else process.env.OPENCODEX_HOME = previousHome;
+      removeTreeWithRetry(testHome);
+    }
   });
 });
