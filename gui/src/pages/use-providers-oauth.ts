@@ -63,20 +63,25 @@ export function useProvidersOAuth({
   }, [apiBase]);
 
   useEffect(() => {
-    const cancelActiveLogins = () => {
+    const cancelActiveLogins = (clearUi: boolean) => {
       const active = [...activeLoginGenerationsRef.current];
       activeLoginGenerationsRef.current.clear();
       for (const [provider, generation] of active) {
         if (oauthLoginGenerationRef.current!.get(provider) === generation) bumpLoginGeneration(provider);
+        if (clearUi) {
+          setBusy(current => current === provider ? null : current);
+          setLoginInfo(current => current?.provider === provider ? null : current);
+        }
         void cancelServerLogin(provider);
       }
     };
-    window.addEventListener("pagehide", cancelActiveLogins);
+    const onPageHide = () => cancelActiveLogins(true);
+    window.addEventListener("pagehide", onPageHide);
     return () => {
-      window.removeEventListener("pagehide", cancelActiveLogins);
-      cancelActiveLogins();
+      window.removeEventListener("pagehide", onPageHide);
+      cancelActiveLogins(false);
     };
-  }, [bumpLoginGeneration, cancelServerLogin]);
+  }, [bumpLoginGeneration, cancelServerLogin, setBusy, setLoginInfo]);
 
   const cancelLoginOAuth = useCallback(async (provider: string) => {
     const gen = bumpLoginGeneration(provider);

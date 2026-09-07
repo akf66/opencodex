@@ -109,9 +109,9 @@ function ProvidersOAuthHarness() {
   const aliveRef = useRef(true);
   const startedRef = useRef(false);
   const [accountSets, setAccountSets] = useState<Record<string, { activeAccountId: string | null; accounts: OAuthAccount[] }>>({});
-  const [, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
   const [, setStatus] = useState("");
-  const [, setLoginInfo] = useState<{ provider: string; url?: string; instructions?: string; deviceCode?: string } | null>(null);
+  const [loginInfo, setLoginInfo] = useState<{ provider: string; url?: string; instructions?: string; deviceCode?: string } | null>(null);
   const [, setOauthStatus] = useState<Record<string, OAuthStatus>>({});
 
   useEffect(() => () => { aliveRef.current = false; }, []);
@@ -138,7 +138,19 @@ function ProvidersOAuthHarness() {
     startedRef.current = true;
     void loginOAuth("orcarouter-oauth");
   }, [loginOAuth]);
-  return null;
+  return (
+    <>
+      <span data-testid="oauth-busy">{busy ?? "idle"}</span>
+      <span data-testid="oauth-login-info">{loginInfo?.url ?? "no-login-info"}</span>
+      <button
+        type="button"
+        disabled={busy === "orcarouter-oauth"}
+        onClick={() => { void loginOAuth("orcarouter-oauth"); }}
+      >
+        Log in again
+      </button>
+    </>
+  );
 }
 
 async function mountProvidersOAuthHarness() {
@@ -236,17 +248,58 @@ test("leaving the providers page cancels its in-flight account login", async () 
   expect(cancelledProviders).toEqual(["orcarouter-oauth"]);
 });
 
-test("closing or reloading the management page cancels its in-flight account login", async () => {
+test("pagehide cancels an account login and allows another login after bfcache restore", async () => {
   await mountProvidersOAuthHarness();
   await act(async () => {
     pendingLogins.shift()?.(A_URL);
     await new Promise((r) => setTimeout(r, 20));
   });
 
-  win.dispatchEvent(new win.Event("pagehide"));
-  await new Promise((r) => setTimeout(r, 20));
+  expect(host.querySelector('[data-testid="oauth-busy"]')?.textContent).toBe("orcarouter-oauth");
+  expect(host.querySelector('[data-testid="oauth-login-info"]')?.textContent).toBe(A_URL);
+  await act(async () => {
+    win.dispatchEvent(new win.Event("pagehide"));
+    await new Promise((r) => setTimeout(r, 20));
+  });
 
   expect(cancelledProviders).toEqual(["orcarouter-oauth"]);
+  expect(host.querySelector('[data-testid="oauth-busy"]')?.textContent).toBe("idle");
+  expect(host.querySelector('[data-testid="oauth-login-info"]')?.textContent).toBe("no-login-info");
+  const loginAgain = Array.from(host.querySelectorAll("button")).find(button => button.textContent?.includes("Log in again"));
+  expect(loginAgain?.disabled).toBe(false);
+  await act(async () => {
+    loginAgain?.dispatchEvent(new win.MouseEvent("click", { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 20));
+  });
+  expect(pendingLogins).toHaveLength(1);
+});
+
+test("pagehide clears the add-provider OAuth hint and allows another login", async () => {
+  await mountModal();
+  clickByText("Claude");
+  await act(async () => { await new Promise((r) => setTimeout(r, 20)); });
+  clickByText("Log in with Claude");
+  await act(async () => { await new Promise((r) => setTimeout(r, 20)); });
+  await act(async () => {
+    pendingLogins.shift()?.(A_URL);
+    await new Promise((r) => setTimeout(r, 20));
+  });
+
+  expect(host.querySelector(".login-url-block-text")?.textContent).toBe(A_URL);
+  await act(async () => {
+    win.dispatchEvent(new win.Event("pagehide"));
+    await new Promise((r) => setTimeout(r, 20));
+  });
+
+  expect(cancelledProviders).toEqual(["claude"]);
+  expect(host.querySelector(".login-url-block-text")).toBeNull();
+  const loginAgain = Array.from(host.querySelectorAll("button")).find(button => button.textContent?.includes("Log in with Claude"));
+  expect(loginAgain?.disabled).toBe(false);
+  await act(async () => {
+    loginAgain?.dispatchEvent(new win.MouseEvent("click", { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 20));
+  });
+  expect(pendingLogins).toHaveLength(1);
 });
 
 test("the add-provider OAuth pane can cancel an in-flight login", async () => {

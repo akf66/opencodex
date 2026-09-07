@@ -149,6 +149,8 @@ const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
 const PROVIDER_DISPLAY_NAME_KEYS: Record<string, TKey> = {
   "command-code": "provider.name.commandCodeAuth",
   commandcode: "provider.name.commandCodeApi",
+  orcarouter: "provider.name.orcaRouterApi",
+  "orcarouter-oauth": "provider.name.orcaRouterAuth",
   volcengine: "provider.name.volcengine",
   "volcengine-coding-plan": "provider.name.volcengineCodingPlan",
   "volcengine-agent-plan": "provider.name.volcengineAgentPlan",

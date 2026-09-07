@@ -90,7 +90,7 @@ files or a raw network capture.
 
 Start the provider's registered login flow. OAuth-style account providers open a browser and store
 credentials under `~/.opencodex/` (refreshable tokens rotate automatically; durable key grants such
-as OrcaRouter are reused); API-key login providers open their key dashboard, prompt for the
+as OrcaRouter are reused until the provider revokes them); API-key login providers open their key dashboard, prompt for the
 key, validate it when possible, and save the resulting provider config. The command prints the
 currently accepted OAuth and API-key provider ids when the name is missing or unknown.
 

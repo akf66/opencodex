@@ -28,10 +28,13 @@ import {
 } from "../../src/providers/model-discovery";
 import { PROVIDER_REGISTRY } from "../../src/providers/registry";
 import type { OcxConfig } from "../../src/types";
+import { en } from "../../gui/src/i18n/en";
+import { interpolate, type TFn } from "../../gui/src/i18n/shared";
 import { formatProviderDisplayName, providerIconSrc } from "../../gui/src/provider-icons";
 import { removeTreeWithRetry } from "../helpers/remove-tree";
 
 const originalFetch = globalThis.fetch;
+const englishT: TFn = (key, vars) => interpolate(en[key], vars);
 
 afterEach(() => {
   globalThis.fetch = originalFetch;
@@ -72,8 +75,8 @@ describe("OrcaRouter dual authentication", () => {
     expect(OAUTH_PROVIDERS["orcarouter-oauth"]).toBeDefined();
     expect(deriveProviderPresets().find(row => row.id === "orcarouter")).toMatchObject({ auth: "key" });
     expect(deriveProviderPresets().find(row => row.id === "orcarouter-oauth")).toMatchObject({ auth: "oauth" });
-    expect(formatProviderDisplayName("orcarouter")).toBe("OrcaRouter - API");
-    expect(formatProviderDisplayName("orcarouter-oauth")).toBe("OrcaRouter - Auth");
+    expect(formatProviderDisplayName("orcarouter", englishT)).toBe("OrcaRouter - API");
+    expect(formatProviderDisplayName("orcarouter-oauth", englishT)).toBe("OrcaRouter - Auth");
     expect(providerIconSrc("orcarouter")).toBe("/provider-icons/orcarouter.png");
     expect(providerIconSrc("orcarouter-oauth")).toBe("/provider-icons/orcarouter.png");
   });

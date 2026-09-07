@@ -27,7 +27,7 @@ export function useAddProviderOAuth({
   onAdded: (name: string) => void;
 }) {
   const loginGenerationRef = useRef(new Map<string, number>());
-  const activeProvidersRef = useRef(new Set<string>());
+  const activeProvidersRef = useRef(new Map<string, OAuthLoginSetters>());
 
   const bumpLoginGeneration = useCallback((providerId: string) => {
     const generation = (loginGenerationRef.current.get(providerId) ?? 0) + 1;
@@ -45,18 +45,24 @@ export function useAddProviderOAuth({
   }, [apiBase]);
 
   useEffect(() => {
-    const cancelActiveLogins = () => {
+    const cancelActiveLogins = (clearUi: boolean) => {
       const providers = [...activeProvidersRef.current];
       activeProvidersRef.current.clear();
-      for (const providerId of providers) {
+      for (const [providerId, setters] of providers) {
         bumpLoginGeneration(providerId);
+        if (clearUi) {
+          setters.setOauthBusy(false);
+          setters.setOauthUrl("", providerId);
+          setters.setOauthMsg("");
+        }
         void cancelServerLogin(providerId);
       }
     };
-    window.addEventListener("pagehide", cancelActiveLogins);
+    const onPageHide = () => cancelActiveLogins(true);
+    window.addEventListener("pagehide", onPageHide);
     return () => {
-      window.removeEventListener("pagehide", cancelActiveLogins);
-      cancelActiveLogins();
+      window.removeEventListener("pagehide", onPageHide);
+      cancelActiveLogins(false);
     };
   }, [bumpLoginGeneration, cancelServerLogin]);
 
@@ -82,7 +88,7 @@ export function useAddProviderOAuth({
     const { setOauthBusy, setOauthMsg, setOauthMsgTone, setOauthUrl, setManualCode, setManualCodeMsg, setManualCodeOk } = setters;
     const generation = bumpLoginGeneration(providerId);
     const isCurrent = () => loginGenerationRef.current.get(providerId) === generation;
-    activeProvidersRef.current.add(providerId);
+    activeProvidersRef.current.set(providerId, setters);
     setOauthBusy(true);
     setOauthMsg("");
     setOauthMsgTone("ok");
